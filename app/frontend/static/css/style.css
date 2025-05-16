@@ -1,0 +1,116 @@
+/* Общие стили для страницы */
+body {
+  background-color: #000000;
+  color: #FFA500; /* Оранжевый цвет */
+  font-family: 'Eurostile Condensed', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header-text {
+  font-family: 'Helvetica', sans-serif;
+  color: #FFA500;
+  text-shadow: 0 0 5px rgba(255, 127, 0, 0.5), 0 0 10px rgba(255, 127, 0, 0.4);
+}
+
+h3 {
+  text-decoration: underline;
+}
+
+h1, h2 {
+  margin-top: 10px;
+}
+
+/* Стили для основной панели */
+.main-content {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.left-panel {
+  width: 60%;
+  padding-right: 20px;
+}
+
+.right-panel {
+  width: 35%;
+  padding-left: 20px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #FFA500;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+}
+
+th {
+  background-color: #222222;
+}
+
+tr:nth-child(even) {
+  background-color: #333333;
+}
+
+tr:hover {
+  background-color: #444444;
+}
+
+table.dataTable {
+  border: 1px solid #FFA500;
+}
+
+/* Стили для кнопок */
+button {
+  background-color: #222222; /* Темный фон для кнопок */
+  color: #FFA500; /* Оранжевый цвет текста */
+  border: 2px solid #FFA500; /* Оранжевая рамка */
+  padding: 10px 20px;
+  font-family: 'Eurostile Condensed', sans-serif;
+  font-size: 16px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 5px; /* Скругленные углы */
+  outline: none;
+  transition: all 0.3s ease; /* Плавный переход */
+  box-shadow: 0 0 5px rgba(255, 127, 0, 0.5), 0 0 10px rgba(255, 127, 0, 0.4); /* Эффект glow */
+}
+
+/* Эффекты при наведении на кнопку */
+button:hover {
+  background-color: #333333; /* Светлый фон при наведении */
+  box-shadow: 0 0 10px rgba(255, 127, 0, 0.7), 0 0 20px rgba(255, 127, 0, 0.6); /* Усиление эффекта glow */
+}
+
+/* Эффекты при фокусе на кнопке */
+button:focus {
+  outline: none; /* Убираем стандартный фокус */
+  box-shadow: 0 0 15px rgba(255, 127, 0, 0.8), 0 0 30px rgba(255, 127, 0, 0.7); /* Яркое свечение при фокусе */
+}
+
+/* Стили для контейнера кнопок */
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+}

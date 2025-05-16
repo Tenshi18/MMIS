@@ -1,0 +1,12 @@
+FROM python:3.13-slim
+
+WORKDIR /app_tbot
+
+COPY requirements.txt /app_tbot/
+COPY telegram_bot.py /app_tbot/
+COPY telegram_bot_config.json /app_tbot/
+
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["python", "telegram_bot.py"]

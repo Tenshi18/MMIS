@@ -1,0 +1,5 @@
+aiogram
+telethon
+aiosqlite
+asyncio
+logging

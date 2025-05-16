@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  telegram_eye:
+    build:
+      context: telegram_eye
+      dockerfile: telegram_eye/Dockerfile.telegram_eye
+    volumes:
+      - ./telegram_eye/telegram_eye_config.json:/app/telegram_eye_config.json
+      - ./telegram_eye/telegram_eye_msgs.db:/app/telegram_eye_msgs.db
+      - ./telegram_eye/MMIS-TGE.session:/app/MMIS-TGE.session
+    restart: always
+    depends_on:
+      - telegram_bot
+
+  telegram_bot:
+    build:
+      context: telegram_bot
+      dockerfile: telegram_bot/Dockerfile.telegram_bot
+    volumes:
+      - ./telegram_bot/telegram_bot_config.json:/app/telegram_bot_config.json
+    restart: always

@@ -1,0 +1,13 @@
+FROM python:3.13-slim
+
+WORKDIR /app_teye
+
+COPY requirements.txt /app_teye/
+COPY telegram_eye.py /app_teye/
+COPY telegram_eye_config.json /app_teye/
+COPY MMIS-TGE.session /app_teye/
+
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["python", "telegram_eye.py"]
