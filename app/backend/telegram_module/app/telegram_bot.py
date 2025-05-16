@@ -1,12 +1,13 @@
-import signal
+import getpass
 import asyncio
-import json
+import signal
 import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message
+from config_encryption import check_and_encrypt, read_encrypted_config
 
 # Настройка логирования
 logger = logging.getLogger("telegram_bot")
@@ -47,29 +48,28 @@ def shutdown(sig: signal.Signals) -> None:
 # Настраивает обработчики сигналов для правильного завершения
 def setup_signal_handler() -> None:
     loop = asyncio.get_running_loop()
-    for sig in (signal.SIGHUP, signal.SIGTERM, signal.SIGINT):
+    for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown, sig)
-
-# Загрузка конфигурации из JSON файла
-def load_config():
-    with open('telegram_bot_config.json', 'r') as f:
-        data = json.load(f)
-    return data
 
 # Основная задача для работы с ботом
 async def bot_worker(bot: Bot, dp: Dispatcher) -> None:
     await dp.start_polling(bot)
 
 # Главная функция для запуска бота
-async def main() -> None:
+async def main(password: str) -> None:
     # Настраиваем обработчики сигналов
     setup_signal_handler()
 
     # Защищаем основную задачу
     protect(asyncio.current_task())
 
-    # Получаем конфигурацию (API_TOKEN и список одобренных пользователей)
-    config = load_config()
+    # Запрашиваем пароль для дешифрования
+    # password = getpass.getpass("Введите пароль для расшифровки конфигурации telegram-бота ИСМУ\n> ")
+
+    check_and_encrypt('telegram_bot_config.json', 'telegram_bot_config.json.enc', password)
+
+    # Загружаем настройки
+    config = read_encrypted_config('telegram_bot_config.json.enc', password)
     TOKEN = config['api_token']
     approved_users = config['approved_users']
 
@@ -92,6 +92,3 @@ async def main() -> None:
     # Ждём завершения всех задач
     logger.info("Бот запущен. Нажмите Ctrl+C для завершения.")
     await asyncio.gather(bot_task)
-
-if __name__ == "__main__":
-    asyncio.run(main())

@@ -1,16 +1,14 @@
 import signal
-import json
+import getpass
 import html
 from datetime import timedelta
 import logging
 import asyncio
 import aiosqlite
 from telethon import TelegramClient, events
-from telethon.tl.types import PeerUser
 from telethon.errors import SessionPasswordNeededError
 from aiogram import Bot
-
-from backend.db.database import insert_mention
+from config_encryption import check_and_encrypt, read_encrypted_config
 
 # Настройка логирования
 logger = logging.getLogger("telegram_eye")
@@ -28,10 +26,6 @@ if not logger.hasHandlers():
         logger.addHandler(handler)
 
 logger.debug("Логгер настроен")
-
-def load_config():
-    with open('telegram_eye_config.json', 'r') as f:
-        return json.load(f)
 
 class TelegramEye:
     def __init__(self, api_id, api_hash, phone, keywords, bot_token, approved_users, db_name='telegram_eye_msgs.db', session_file='MMIS-TGE.session'):
@@ -74,6 +68,28 @@ class TelegramEye:
         except Exception as e:
             logger.error(f"Ошибка при подключении: {e}", exc_info=True)
 
+    # Создаёт таблицу сообщений в базе данных, если её ещё нет
+    async def setup_database(self):
+        try:
+            self.db = await aiosqlite.connect(self.db_name)
+            await self.db.execute("""
+                CREATE TABLE IF NOT EXISTS messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message_datetime TEXT NOT NULL,
+                    message_link TEXT,
+                    chat_id TEXT,
+                    chat_link TEXT,
+                    user_id INTEGER NOT NULL,
+                    user_name TEXT,
+                    user_nick TEXT,
+                    message_text TEXT
+                )
+            """)
+            await self.db.commit()
+            logger.info("Таблица сообщений проверена или создана.")
+        except Exception as e:
+            logger.error(f"Ошибка при настройке базы данных: {e}", exc_info=True)
+
     # Обрабатывает входящее сообщение и сохраняет его, если оно содержит ключевые слова
     async def process_message(self, event):
         try:
@@ -85,58 +101,29 @@ class TelegramEye:
             if not any(keyword.lower() in message_text.lower() for keyword in self.keywords):
                 return  # Пропускаем сообщение, если ключевые слова отсутствуют
 
-            # Получаем идентификатор чата
-            chat_id = msg.chat_id
-
-            # Формирование ссылки на чат:
-            # Если у чата есть username, используем его
-            if msg.chat.username:
-                chat_link = f"https://t.me/{msg.chat.username}"
-            else:
-                # Если username отсутствует, предполагаем, что это супергруппа.
-                # chat_id для супергруппы имеет вид -100XXXXXXXXX, удаляем префикс "-100"
-                chat_id_str = str(chat_id)
-                if chat_id_str.startswith("-100"):
-                    chat_id_str = chat_id_str.replace("-100", "", 1)
-                chat_link = f"https://t.me/c/{chat_id_str}"
-
-            # Формируем ссылку на сообщение.
-            message_id = msg.id
+            # Получаем информацию о чате и ссылку на сообщение
+            chat_id = msg.chat_id  # ID чата
+            chat_link = f"https://t.me/{msg.chat.username}"
+            message_id = msg.id  # ID сообщения
             message_link = f"https://t.me/c/{chat_id}/{message_id}"
+
+            # Убираем префикс -100 из message_link, если это первые 4 символа
             if str(chat_id).startswith("-100"):
-                message_link = message_link.replace("-100", "", 1) # Если это супергруппа, аналогично удаляем префикс -100
+                message_link = message_link.replace("-100", "", 1)  # Убираем только первый префикс -100
 
             # Получаем информацию об отправителе
             user_id = event.sender.id
-            try:
-                user_entity = await self.client.get_entity(msg.sender_id)
-            except ValueError:
-                user_entity = await self.client.get_entity(PeerUser(msg.sender_id))
-
-            user_id = user_entity.id
-
+            user_entity = await self.client.get_entity(user_id)
             user_name = user_entity.username or "Юзернейм отсутствует"  # Получаем username, если он есть
             user_nick = f"{user_entity.first_name or ''} {user_entity.last_name or ''}".strip()  # Имя и фамилия пользователя
 
-            # Логгируем упоминание
             logger.info(f"[{message_datetime}] {user_nick} ({user_id} @{user_name}) в чате {chat_link} ({chat_id}): {message_text}")
 
-            # Сохраняем в единую таблицу mentions (platform='telegram')
-            await insert_mention(
-                platform="telegram",
-                mention_datetime=message_datetime.isoformat(),
-                mention_link=message_link,
-                source_id=str(chat_id),
-                source_link=chat_link,
-                user_id=str(user_id),
-                user_name=user_name,
-                user_nick=user_nick,
-                mention_text=message_text
-            )
-            logger.info("Упоминание в Telegram сохранено в общую БД.")
+            # Сохраняем данные в базу
+            await self.save_message_to_db(message_datetime, message_link, chat_id, chat_link, user_id, user_name, user_nick, message_text)
 
             # Пересылаем сообщение в бот
-            await self.notify_bot(message_datetime, message_link, chat_link, user_id, user_name, user_nick, message_text)
+            await self.send_notification(message_datetime, message_link, chat_link, user_id, user_name, user_nick, message_text)
 
         except Exception as e:
             logger.error(f"Ошибка при обработке сообщения: {e}", exc_info=True)
@@ -146,33 +133,32 @@ class TelegramEye:
         try:
             # Формируем запрос к БД
             sqlite_insert_with_param = """
-                INSERT INTO tg_mentions (message_datetime, message_link, chat_id, chat_link, user_id, user_name, user_nick, message_text)
+                INSERT INTO messages (message_datetime, message_link, chat_id, chat_link, user_id, user_name, user_nick, message_text)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
             """
 
-            # Заполняем данные для вставки в БД
+            # Заполняем данные для вставки в базу данных
             data_tuple = (message_datetime, chat_id, chat_link, user_id, user_name, user_nick, message_link, message_text)
             await self.db.execute(sqlite_insert_with_param, data_tuple)
             await self.db.commit()
             logger.info(f"Сообщение от {user_nick} (@{user_name}) сохранено в базу данных.")
         except Exception as e:
-            logger.error(f"Ошибка при записи упоминания в БД: {e}", exc_info=True)
+            logger.error(f"Ошибка при записи сообщения в базу данных: {e}", exc_info=True)
 
-    # Отправляет уведомление в Telegram-бот
-    async def notify_bot(self, message_datetime, message_link, chat_link, user_id, user_name, user_nick, message_text):
+    # Отправляет уведомление в Telegram-бота
+    async def send_notification(self, message_datetime, message_link, chat_link, user_id, user_name, user_nick, message_text):
         # Преобразуем время в UTC+3 (МСК+0)
-        msk_time = message_datetime + timedelta(hours=3)
+        local_time = message_datetime + timedelta(hours=3)
 
         # Формируем текст уведомления
         notification_text = (
-            f"➤ <b>Новое упоминание в Telegram</b>\n"
-            f"⌚ <b>Время:</b> {msk_time.strftime('%d.%m.%Y %H:%M:%S')} (МСК)\n"
-            f"⛓ <b>Ссылка на чат:</b> <a href=\"{chat_link}\">{chat_link}</a>\n"
+            f"📅 <b>Дата:</b> {local_time.strftime('%d.%m.%Y %H:%M:%S')} (МСК+0)\n"
+            f"⛓️ <b>Ссылка на чат:</b> <a href=\"{chat_link}\">{chat_link}</a>\n"
             f"🔗 <b>Ссылка на сообщение:</b> <a href=\"{message_link}\">{message_link}</a>\n"
             f"👤 <b>ID пользователя:</b> <code>{user_id}</code>\n"
-            f"🪪 <b>Username:</b> @{user_name if user_name else 'нет'}\n"
+            f"🪪 <b>Username:</b> @{user_name if user_name else 'Нет'}\n"
             f"📛 <b>Имя:</b> {user_nick}\n"
-            f"💬 <b>Текст:</b> {html.escape(message_text)}"
+            f"💬 <b>Сообщение:</b> {html.escape(message_text)}"
         )
 
         # Отправляем уведомления всем пользователям из списка approved_users
@@ -247,10 +233,13 @@ class TelegramEye:
         loop.stop()
 
 # Основная асинхронная функция для запуска бота
-async def main():
+async def main(password: str):
     telegram_eye = None  # Явная инициализация
     try:
-        config = load_config()
+        # password = getpass.getpass("Введите пароль для расшифровки конфигурации TelegramEye\n> ")
+        check_and_encrypt('telegram_eye_config.json', 'telegram_eye_config.json.enc', password)
+        config = read_encrypted_config('telegram_eye_config.json.enc', password)
+
         API_ID = config['api_id']
         API_HASH = config['api_hash']
         PHONE = config['phone']
@@ -260,6 +249,7 @@ async def main():
 
         # Инициализация клиента
         telegram_eye = TelegramEye(API_ID, API_HASH, PHONE, KEYWORDS, BOT_TOKEN, APPROVED_USERS)
+        telegram_eye.setup_signal_handler()
         await telegram_eye.setup_database()  # Настройка базы данных
         await telegram_eye.connect_and_authorize()  # Подключение (и авторизация) аккаунта
 
@@ -279,6 +269,3 @@ async def main():
     finally:
         if telegram_eye:
             await telegram_eye.cleanup()
-
-if __name__ == "__main__":
-    asyncio.run(main())
