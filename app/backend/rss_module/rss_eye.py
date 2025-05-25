@@ -120,7 +120,7 @@ class RSSEye:
                     }
 
                     await self.save_mention_to_db(data)
-                    await self.notify_telegram_bot(data)
+                    # await self.notify_telegram_bot(data)
 
                 except Exception as e:
                     logger.error(f"Ошибка при обработке записи RSS: {e}", exc_info=True)
