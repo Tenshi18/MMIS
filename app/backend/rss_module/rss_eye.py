@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime, timezone, timedelta
 import time
 import logging
@@ -166,7 +167,16 @@ class RSSEye:
 
 
 async def main():
-    config = Settings.from_json()
+    parser = argparse.ArgumentParser(description="RSS Eye Arguments Parser")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="rss_eye_config.json",
+        help="Путь к JSON-файлу конфигурации RSS Eye",
+    )
+    args = parser.parse_args()
+
+    config = Settings.from_json(args.config)
     app = RSSEye(config)
     await app.run()
 
