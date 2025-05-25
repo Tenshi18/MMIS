@@ -6,7 +6,6 @@ import asyncio
 from typing import Dict, List
 from urllib.parse import urlparse
 from contextlib import asynccontextmanager
-
 import aiosqlite
 import feedparser
 from aiogram import Bot
@@ -52,8 +51,8 @@ class RSSEye:
         self.keywords = config.keywords
         self.db_name = db_name
         self.db = None
-        self.bot = Bot(token=config.tg_bot_token)
-        self.approved_users = config.tg_bot_approved_users
+        #self.bot = Bot(token=config.tg_bot_token)
+        #self.approved_users = config.tg_bot_approved_users
         self.shutdown_event = asyncio.Event()
 
     @asynccontextmanager
@@ -163,7 +162,7 @@ class RSSEye:
         while not self.shutdown_event.is_set():
             await asyncio.gather(*(self.process_rss_feed(url) for url in self.rss_urls))
             await asyncio.sleep(interval)
-        await self.bot.session.close()
+        # await self.bot.session.close()
 
 
 async def main():
