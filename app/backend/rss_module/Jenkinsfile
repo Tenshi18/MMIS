@@ -1,0 +1,30 @@
+pipeline {
+        agent {
+            docker {
+                image 'ghcr.io/astral-sh/uv:python3.13-bookworm-slim'
+                args '--dns=9.9.9.9 --dns=8.8.8.8'
+            }
+        }
+        environment {
+            UV_CACHE_DIR = "${env.WORKSPACE}/.uv-cache"
+        }
+        stages {
+            stage('Проверка сети') {
+                steps {
+                    sh 'ping -c 4 files.pythonhosted.org || true'
+                }
+            }
+            stage('Установка зависимостей') {
+                steps {
+                    sh 'uv sync --locked --no-dev'
+                }
+            }
+            stage('Развёртывание') {
+                steps {
+                    withCredentials([file(credentialsId: 'rss_eye_config_json', variable: 'CONFIG_FILE')]) {
+                    sh "python app/backend/rss_module/rss_eye.py --config ${CONFIG_FILE}"
+                }
+            }
+        }
+    }
+}
