@@ -1,0 +1,297 @@
+/* Общие стили для страницы */
+body {
+  background-color: #000000;
+  color: #FFA500; /* Оранжевый цвет */
+  font-family: 'Eurostile Condensed', sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 40px;
+  width: 100%;
+}
+
+.header-text {
+  font-family: 'Helvetica', sans-serif;
+  color: #FFA500;
+  margin: 0;
+}
+
+h3 {
+  text-decoration: underline;
+  color: #FFA500;
+  margin: 10px 0;
+}
+
+h1, h2 {
+  margin-top: 10px;
+}
+
+/* Стили для основной панели */
+.main-content {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20px;
+}
+
+.left-panel {
+  width: 70%;
+}
+
+.right-panel {
+  width: 30%;
+}
+
+/* Стили для таблицы */
+.table-container {
+  max-height: 70vh;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #1a1a1a;
+  color: #fff;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #2a2a2a;
+  color: #FFA500;
+  border-bottom: 2px solid #ff8c00;
+  padding: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  z-index: 1;
+  text-align: left;
+}
+
+.data-table tbody tr {
+  background-color: #1a1a1a;
+  transition: background-color 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+  background-color: #2a2a2a;
+}
+
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid #333;
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Стили для ячеек с текстом */
+.data-table td:nth-child(4) {
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Стили для форм */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  color: #FFA500;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.form-group select,
+.form-group input[type="date"] {
+  width: 100%;
+  background-color: #222222;
+  border: 1px solid #FFA500;
+  color: #FFA500;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-group select:focus,
+.form-group input[type="date"]:focus {
+  background-color: #333333;
+  border-color: #FFA500;
+  outline: none;
+}
+
+/* Стили для кнопок */
+.btn {
+  background-color: #222222;
+  color: #FFA500;
+  border: 2px solid #FFA500;
+  padding: 8px 16px;
+  font-family: 'Eurostile Condensed', sans-serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.btn:hover:not(.disabled) {
+  background-color: #333333;
+}
+
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Стили для контейнера кнопок */
+.button-container {
+  display: flex;
+  gap: 10px;
+}
+
+/* Стили для ссылок */
+.link-orange {
+  color: #FFA500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.link-orange:hover {
+  color: #FF8C00;
+  text-decoration: underline;
+}
+
+/* Стили для скроллбара */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111111;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFA500;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF8C00;
+}
+
+/* Стили для пустой таблицы */
+.data-table tbody tr td[colspan] {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 1024px) {
+  .main-content {
+    flex-direction: column;
+  }
+
+  .left-panel,
+  .right-panel {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .button-container {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Стили для карточек */
+.card {
+  background-color: #111111;
+  border: 1px solid #FFA500;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.card-header {
+  background-color: #222222;
+  border-bottom: 1px solid #FFA500;
+  padding: 15px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+/* Стили для ссылок в таблице */
+.data-table .link-orange {
+  color: #ff8c00;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.data-table .link-orange:hover {
+  color: #ffa500;
+  text-decoration: underline;
+}
+
+.navbar {
+  margin-bottom: 2rem;
+}
+
+.card {
+  box-shadow: none !important;
+}
+
+.btn-group {
+  gap: 0.5rem;
+}
+
+/* --- FORCE TABLE TEXT COLOR --- */
+.data-table,
+.data-table * {
+    color: #fff !important;
+    opacity: 1 !important;
+}
