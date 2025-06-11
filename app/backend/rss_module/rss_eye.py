@@ -21,9 +21,8 @@ class Settings(BaseModel):
     keywords: List[str]
     check_interval: int = 300  # секунд
     max_retries: int = 3
-    cache_ttl: int = 300  # секунд
+    cache_ttl: int = 3600  # секунд (1 час)
     proxy: Optional[str] = None
-    user_agent: str = "RSS Eye"
 
     @classmethod
     def from_json(cls, path: str = "rss_eye_config.json") -> "Settings":
@@ -59,7 +58,6 @@ class RSSEye:
     async def init_session(self):
         if self.session is None:
             self.session = aiohttp.ClientSession(
-                headers={"User-Agent": self.config.user_agent},
                 timeout=aiohttp.ClientTimeout(total=30)
             )
 
@@ -84,7 +82,7 @@ class RSSEye:
             async with self.session.get(url, proxy=self.config.proxy) as response:
                 if response.status == 200:
                     content = await response.text()
-                    feed = feedparser.parse(content, agent=self.config.user_agent)
+                    feed = feedparser.parse(content)
                     if not feed.bozo:
                         self.cache[cache_key] = feed
                         return feed
@@ -118,6 +116,14 @@ class RSSEye:
         
         return False
 
+    def is_google_source(self, source_domain: str) -> tuple[bool, str]:
+        """Определяет тип Google-источника и возвращает (is_google, source_type)"""
+        if "news.google.com" in source_domain:
+            return True, "google_news"
+        elif "alerts.google.com" in source_domain:
+            return True, "google_alerts"
+        return False, "other"
+
     def extract_entry_data(self, entry: Dict, source_url: str) -> Dict:
         """Извлекает и нормализует данные статьи"""
         published_parsed = entry.get("published_parsed")
@@ -129,10 +135,26 @@ class RSSEye:
         source_domain = urlparse(source_url).netloc
         source_name = entry.get("feed", {}).get("title", source_domain)
 
-        # Универсальное извлечение текста
+        # Определяем тип источника
+        is_google, source_type = self.is_google_source(source_domain)
+
+        # Универсальное извлечение текста с учетом типа источника
         title = entry.get("title", "")
-        summary = entry.get("summary", "") or entry.get("description", "")
+        if source_type == "google_news":
+            # Google News часто использует description вместо summary
+            summary = entry.get("description", "") or entry.get("summary", "")
+        else:
+            summary = entry.get("summary", "") or entry.get("description", "")
+
         link = entry.get("link", "")
+
+        # Для Google News добавляем дополнительную информацию
+        if source_type == "google_news":
+            source_name = "Google News"
+            # Добавляем информацию о публикации, если есть
+            publisher = entry.get("source", {}).get("title", "")
+            if publisher:
+                summary = f"Источник: {publisher}\n{summary}"
 
         return {
             "mention_datetime": dt_utc.isoformat(),
@@ -145,10 +167,9 @@ class RSSEye:
             "mention_text": f"{title}\n{summary}",
             "feed_url": source_url,
             "entry_title": title,
-            "entry_summary": summary
+            "entry_summary": summary,
+            "source_type": source_type  # Добавляем тип источника
         }
-    
-    
 
     async def process_rss_feed(self, url: str):
         """Обрабатывает одну RSS-ленту"""
@@ -163,7 +184,8 @@ class RSSEye:
             source_name = feed.get("feed", {}).get("title", source_domain)
             await add_source(Platform.RSS, source_domain, source_name, url)
 
-            is_google_alert = any(sub in source_domain for sub in ["alerts.google.com", "google.com"])
+            # Определяем тип источника
+            is_google, source_type = self.is_google_source(source_domain)
 
             for entry in feed.get("entries", []):
                 try:
@@ -173,7 +195,8 @@ class RSSEye:
                     if await mention_exists(link):
                         continue  # Уже есть в БД, пропускаем
 
-                    if not is_google_alert and not self.contains_keywords(entry):
+                    # Для Google News и Alerts пропускаем проверку ключевых слов
+                    if not is_google and not self.contains_keywords(entry):
                         continue
 
                     mention_data = self.extract_entry_data(entry, url)
